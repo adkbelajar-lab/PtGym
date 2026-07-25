@@ -1,10 +1,10 @@
 const { Telegraf } = require('telegraf');
 const { createClient } = require('@supabase/supabase-js');
-const { GoogleGenAI } = require('@google/genai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const SYSTEM_INSTRUCTION = `Kamu adalah Personal Trainer (PT) Gym profesional, ramah, dan sangat perhatian. 
 Tugasmu:
@@ -17,7 +17,7 @@ module.exports = async (req, res) => {
   try {
     if (req.method === 'POST') {
       const update = req.body;
-      const message = update.message;
+      const message = update ? update.message : null;
 
       if (message && message.text) {
         const userId = message.from.id;
@@ -41,19 +41,20 @@ module.exports = async (req, res) => {
 
         // 2. Siapkan histori chat untuk AI
         const history = client.chat_history || [];
-        const contents = [
-          ...history.map(h => ({ role: h.role, parts: [{ text: h.text }] })),
-          { role: 'user', parts: [{ text: userText }] }
-        ];
+        const formattedHistory = history.map(h => ({
+          role: h.role === 'model' ? 'model' : 'user',
+          parts: [{ text: h.text }]
+        }));
 
         // 3. Panggil Gemini AI
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: contents,
-          config: { systemInstruction: SYSTEM_INSTRUCTION }
+        const model = genAI.getGenerativeModel({ 
+          model: 'gemini-1.5-flash',
+          systemInstruction: SYSTEM_INSTRUCTION 
         });
 
-        const replyText = response.text;
+        const chat = model.startChat({ history: formattedHistory });
+        const result = await chat.sendMessage(userText);
+        const replyText = result.response.text();
 
         // 4. Update Histori Chat ke Supabase (Simpan 10 percakapan terakhir)
         const updatedHistory = [
