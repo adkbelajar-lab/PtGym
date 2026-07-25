@@ -17,9 +17,9 @@ export default async function handler(req, res) {
           replyText = "Error: GEMINI_API_KEY belum dipasang di Vercel!";
         } else {
           try {
-            // Panggil API Gemini secara langsung tanpa SDK/Library
+            // Menggunakan endpoint model gemini-2.0-flash yang mendukung v1beta
             const geminiRes = await fetch(
-              `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+              `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`,
               {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -28,7 +28,7 @@ export default async function handler(req, res) {
                     {
                       parts: [
                         {
-                          text: `Kamu adalah Personal Trainer (PT) Gym yang ramah, profesional, dan membantu. Jawab pertanyaan user berikut secara ringkas:\n\nUser: ${userText}`
+                          text: `Kamu adalah Personal Trainer (PT) Gym yang ramah, profesional, dan membantu. Jawab pertanyaan user berikut secara ringkas dan informatif:\n\nUser: ${userText}`
                         }
                       ]
                     }
@@ -43,7 +43,7 @@ export default async function handler(req, res) {
               replyText = data.candidates[0].content.parts[0].text;
             } else if (data.error) {
               console.error("Gemini API Error Detail:", data.error);
-              replyText = `Error Gemini: ${data.error.message || 'API Key tidak valid / kuota habis'}`;
+              replyText = `Error Gemini: ${data.error.message}`;
             } else {
               replyText = "Maaf, AI tidak memberikan respon.";
             }
