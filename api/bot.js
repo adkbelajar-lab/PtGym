@@ -1,22 +1,40 @@
-// Gantilah struktur ekspor di file bot.js kamu menjadi seperti ini:
-
 export default async function handler(req, res) {
-  // 1. Terima request POST dari Telegram
+  // Hanya proses jika request datang berupa POST dari Telegram
   if (req.method === 'POST') {
     try {
-      const update = req.body;
+      // Pastikan body diterima
+      const body = req.body || {};
+      const message = body.message;
 
-      // Jalankan logika bot kamu di sini
-      // ... (kode bot kamu) ...
+      // Jika ada pesan teks masuk dari user
+      if (message && message.text) {
+        const chatId = message.chat.id;
+        const text = message.text;
 
-      // Kirim status 200 ke Telegram agar Telegram tahu pesan berhasil diterima
+        // Ambil token dari Environment Variable
+        const token = process.env.TELEGRAM_TOKEN;
+
+        // Kirim balasan langsung ke Telegram API
+        if (token) {
+          await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              text: `Halo! Saya menerima pesanmu: "${text}"`
+            })
+          });
+        }
+      }
+
+      // Selalu kembalikan respon 200 OK ke Telegram
       return res.status(200).json({ status: 'ok' });
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error handling update:', error);
       return res.status(500).json({ error: error.message });
     }
   }
 
-  // 2. Jika dibuka lewat browser (GET request)
-  return res.status(200).send('Bot PT Gym Server is Running!');
+  // Jika dibuka dari browser
+  return res.status(200).send('Server Bot PT Gym Aktif!');
 }
