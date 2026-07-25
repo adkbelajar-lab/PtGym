@@ -17,7 +17,6 @@ export default async function handler(req, res) {
           replyText = "Error: GROQ_API_KEY belum dipasang di Vercel!";
         } else {
           try {
-            // Memanggil API Groq (Llama 3.3 70B)
             const groqRes = await fetch(
               'https://api.groq.com/openai/v1/chat/completions',
               {
@@ -58,7 +57,6 @@ export default async function handler(req, res) {
           }
         }
 
-        // Kirim balasan ke Telegram
         if (telegramToken && replyText) {
           await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
             method: 'POST',
