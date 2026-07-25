@@ -19,8 +19,8 @@ export default async function handler(req, res) {
         if (geminiApiKey) {
           try {
             const genAI = new GoogleGenerativeAI(geminiApiKey);
-            // Menggunakan model Gemini terbaru
-            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+            // Menggunakan model Gemini 1.5 Flash
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
             const prompt = `Kamu adalah Personal Trainer (PT) Gym yang ramah, profesional, dan membantu. Jawab pertanyaan user berikut secara ringkas dan mudah dipahami:\n\nUser: ${userText}`;
             
