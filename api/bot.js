@@ -9,47 +9,52 @@ export default async function handler(req, res) {
         const userText = message.text;
 
         const telegramToken = process.env.TELEGRAM_TOKEN;
-        const geminiApiKey = process.env.GEMINI_API_KEY;
+        const groqApiKey = process.env.GROQ_API_KEY;
 
         let replyText = "";
 
-        if (!geminiApiKey) {
-          replyText = "Error: GEMINI_API_KEY belum dipasang di Vercel!";
+        if (!groqApiKey) {
+          replyText = "Error: GROQ_API_KEY belum dipasang di Vercel!";
         } else {
           try {
-            // Menggunakan gemini-1.5-flash yang kuotanya lebih besar & bebas terkena rate limit
-            const geminiRes = await fetch(
-              `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+            // Memanggil API Groq (Llama 3.3 70B)
+            const groqRes = await fetch(
+              'https://api.groq.com/openai/v1/chat/completions',
               {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${groqApiKey}`
+                },
                 body: JSON.stringify({
-                  contents: [
+                  model: 'llama-3.3-70b-versatile',
+                  messages: [
                     {
-                      parts: [
-                        {
-                          text: `Kamu adalah Personal Trainer (PT) Gym yang ramah, profesional, dan membantu. Jawab pertanyaan user berikut secara ringkas dan informatif:\n\nUser: ${userText}`
-                        }
-                      ]
+                      role: 'system',
+                      content: 'Kamu adalah Personal Trainer (PT) Gym yang ramah, profesional, dan membantu. Jawab pertanyaan user secara ringkas, jelas, dan informatif.'
+                    },
+                    {
+                      role: 'user',
+                      content: userText
                     }
                   ]
                 })
               }
             );
 
-            const data = await geminiRes.json();
+            const data = await groqRes.json();
 
-            if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
-              replyText = data.candidates[0].content.parts[0].text;
+            if (data.choices && data.choices[0]?.message?.content) {
+              replyText = data.choices[0].message.content;
             } else if (data.error) {
-              console.error("Gemini API Error Detail:", data.error);
-              replyText = `Error Gemini: ${data.error.message}`;
+              console.error("Groq API Error Detail:", data.error);
+              replyText = `Error Groq: ${data.error.message}`;
             } else {
               replyText = "Maaf, AI tidak memberikan respon.";
             }
           } catch (err) {
-            console.error("Fetch Gemini Error:", err);
-            replyText = "Gagal terhubung ke server AI Gemini.";
+            console.error("Fetch Groq Error:", err);
+            replyText = "Gagal terhubung ke server AI Groq.";
           }
         }
 
@@ -73,5 +78,5 @@ export default async function handler(req, res) {
     }
   }
 
-  return res.status(200).send('Bot Active');
+  return res.status(200).send('Bot Active with Groq AI');
 }
