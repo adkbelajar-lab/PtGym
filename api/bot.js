@@ -1,5 +1,3 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
 export default async function handler(req, res) {
   if (req.method === 'POST') {
     try {
@@ -15,26 +13,47 @@ export default async function handler(req, res) {
 
         let replyText = "";
 
-        // Panggil Google Gemini AI
-        if (geminiApiKey) {
-          try {
-            const genAI = new GoogleGenerativeAI(geminiApiKey);
-            // Menggunakan model Gemini 1.5 Flash
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-            const prompt = `Kamu adalah Personal Trainer (PT) Gym yang ramah, profesional, dan membantu. Jawab pertanyaan user berikut secara ringkas dan mudah dipahami:\n\nUser: ${userText}`;
-            
-            const result = await model.generateContent(prompt);
-            replyText = result.response.text();
-          } catch (geminiError) {
-            console.error("Gemini Error:", geminiError);
-            replyText = "Maaf, AI sedang mengalami kendala. Coba tanya lagi nanti ya!";
-          }
+        if (!geminiApiKey) {
+          replyText = "Error: GEMINI_API_KEY belum dipasang di Vercel!";
         } else {
-          replyText = "API Key Gemini belum terpasang di Vercel!";
+          try {
+            // Panggil API Gemini secara langsung tanpa SDK/Library
+            const geminiRes = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [
+                    {
+                      parts: [
+                        {
+                          text: `Kamu adalah Personal Trainer (PT) Gym yang ramah, profesional, dan membantu. Jawab pertanyaan user berikut secara ringkas:\n\nUser: ${userText}`
+                        }
+                      ]
+                    }
+                  ]
+                })
+              }
+            );
+
+            const data = await geminiRes.json();
+
+            if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
+              replyText = data.candidates[0].content.parts[0].text;
+            } else if (data.error) {
+              console.error("Gemini API Error Detail:", data.error);
+              replyText = `Error Gemini: ${data.error.message || 'API Key tidak valid / kuota habis'}`;
+            } else {
+              replyText = "Maaf, AI tidak memberikan respon.";
+            }
+          } catch (err) {
+            console.error("Fetch Gemini Error:", err);
+            replyText = "Gagal terhubung ke server AI Gemini.";
+          }
         }
 
-        // Kirim balasan hasil AI ke Telegram
+        // Kirim balasan ke Telegram
         if (telegramToken && replyText) {
           await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
             method: 'POST',
@@ -54,5 +73,5 @@ export default async function handler(req, res) {
     }
   }
 
-  return res.status(200).send('Server Bot PT Gym AI Ready!');
+  return res.status(200).send('Bot Active');
 }
