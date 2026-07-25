@@ -1,40 +1,58 @@
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
 export default async function handler(req, res) {
-  // Hanya proses jika request datang berupa POST dari Telegram
   if (req.method === 'POST') {
     try {
-      // Pastikan body diterima
       const body = req.body || {};
       const message = body.message;
 
-      // Jika ada pesan teks masuk dari user
       if (message && message.text) {
         const chatId = message.chat.id;
-        const text = message.text;
+        const userText = message.text;
 
-        // Ambil token dari Environment Variable
-        const token = process.env.TELEGRAM_TOKEN;
+        const telegramToken = process.env.TELEGRAM_TOKEN;
+        const geminiApiKey = process.env.GEMINI_API_KEY;
 
-        // Kirim balasan langsung ke Telegram API
-        if (token) {
-          await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        let replyText = "";
+
+        // Panggil Google Gemini AI
+        if (geminiApiKey) {
+          try {
+            const genAI = new GoogleGenerativeAI(geminiApiKey);
+            // Menggunakan model Gemini terbaru
+            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+            const prompt = `Kamu adalah Personal Trainer (PT) Gym yang ramah, profesional, dan membantu. Jawab pertanyaan user berikut secara ringkas dan mudah dipahami:\n\nUser: ${userText}`;
+            
+            const result = await model.generateContent(prompt);
+            replyText = result.response.text();
+          } catch (geminiError) {
+            console.error("Gemini Error:", geminiError);
+            replyText = "Maaf, AI sedang mengalami kendala. Coba tanya lagi nanti ya!";
+          }
+        } else {
+          replyText = "API Key Gemini belum terpasang di Vercel!";
+        }
+
+        // Kirim balasan hasil AI ke Telegram
+        if (telegramToken && replyText) {
+          await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               chat_id: chatId,
-              text: `Halo! Saya menerima pesanmu: "${text}"`
+              text: replyText
             })
           });
         }
       }
 
-      // Selalu kembalikan respon 200 OK ke Telegram
       return res.status(200).json({ status: 'ok' });
     } catch (error) {
-      console.error('Error handling update:', error);
+      console.error('Handler Error:', error);
       return res.status(500).json({ error: error.message });
     }
   }
 
-  // Jika dibuka dari browser
-  return res.status(200).send('Server Bot PT Gym Aktif!');
+  return res.status(200).send('Server Bot PT Gym AI Ready!');
 }
